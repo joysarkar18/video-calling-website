@@ -1,14 +1,10 @@
-
 import h from "./helpers.js";
 
 window.addEventListener("load", () => {
   const room = h.getQString(location.href, "room");
   const user = sessionStorage.getItem("username");
   const username = JSON.parse(sessionStorage.getItem(user)).name;
-  function modifySdpForH264(sdp) {
-    sdp.sdp = sdp.sdp.replace("profile-level-id=42e01f", "profile-level-id=42e01f;level-asymmetry-allowed=1");
-    return sdp.sdp.replace("96", "126"); // Prefer H264 codec
-  }
+
   if (!room) {
     document.querySelector("#room-create").attributes.removeNamedItem("hidden");
   } else if (!username) {
@@ -52,12 +48,12 @@ window.addEventListener("load", () => {
         init(true, data.socketId);
       });
 
-      socket.on('emojiReaction', (emoji) => {
+      socket.on("emojiReaction", (emoji) => {
         // Broadcast the emoji to all connected clients, including the sender
         // io.emit('broadcastEmoji', emoji);
 
         h.showEmojiReaction(emoji);
-    });
+      });
 
       socket.on("newUserStart", (data) => {
         pc.push(data.sender);
@@ -72,40 +68,82 @@ window.addEventListener("load", () => {
           : "";
       });
 
+      // Helper function to prioritize H.264 codec in the SDP
+      function prioritizeH264(sdp) {
+        const sdpLines = sdp.split("\r\n");
+        const mLineIndex = sdpLines.findIndex((line) =>
+          line.startsWith("m=video")
+        );
+
+        if (mLineIndex === -1) return sdp; // No video line found
+
+        // Find all codec lines
+        const h264PayloadType = sdpLines
+          .find((line) => line.includes("H264"))
+          ?.match(/:(\d+) /)?.[1];
+        if (!h264PayloadType) return sdp; // No H.264 found
+
+        // Reorder codecs in the m=video line to prioritize H.264
+        const mLine = sdpLines[mLineIndex].split(" ");
+        const codecIndex = mLine.indexOf(h264PayloadType);
+        if (codecIndex > -1) {
+          mLine.splice(codecIndex, 1);
+          mLine.splice(3, 0, h264PayloadType); // Ensure H.264 is prioritized right after 'm=video ...'
+          sdpLines[mLineIndex] = mLine.join(" ");
+        }
+
+        return sdpLines.join("\r\n");
+      }
+
+      // Modified "sdp" event handler
       socket.on("sdp", async (data) => {
         if (data.description.type === "offer") {
-            data.description.sdp = modifySdpForH264(data.description); // Modify SDP to prioritize H264
-            await pc[data.sender].setRemoteDescription(new RTCSessionDescription(data.description));
-    
-            h.getUserFullMedia()
-                .then(async (stream) => {
-                    if (!document.getElementById("local").srcObject) {
-                        h.setLocalStream(stream);
-                    }
-    
-                    // Save the user's stream
-                    myStream = stream;
-                    stream.getTracks().forEach((track) => {
-                        pc[data.sender].addTrack(track, stream);
-                    });
-    
-                    let answer = await pc[data.sender].createAnswer();
-                    answer.sdp = modifySdpForH264(answer); // Modify SDP answer to prefer H264
-    
-                    await pc[data.sender].setLocalDescription(answer);
-    
-                    socket.emit("sdp", {
-                        description: pc[data.sender].localDescription,
-                        to: data.sender,
-                        sender: socketId,
-                    });
-                })
-                .catch((e) => console.error(e));
+          // Prioritize H.264 in offer SDP
+          data.description.sdp = prioritizeH264(data.description.sdp);
+
+          if (data.description) {
+            await pc[data.sender].setRemoteDescription(
+              new RTCSessionDescription(data.description)
+            );
+          }
+
+          h.getUserFullMedia()
+            .then(async (stream) => {
+              if (!document.getElementById("local").srcObject) {
+                h.setLocalStream(stream);
+              }
+
+              // Save user stream
+              myStream = stream;
+
+              stream.getTracks().forEach((track) => {
+                pc[data.sender].addTrack(track, stream);
+              });
+
+              let answer = await pc[data.sender].createAnswer();
+
+              // Prioritize H.264 in answer SDP
+              answer.sdp = prioritizeH264(answer.sdp);
+              await pc[data.sender].setLocalDescription(answer);
+
+              socket.emit("sdp", {
+                description: pc[data.sender].localDescription,
+                to: data.sender,
+                sender: socketId,
+              });
+            })
+            .catch((e) => {
+              console.error(e);
+            });
         } else if (data.description.type === "answer") {
-            data.description.sdp = modifySdpForH264(data.description); // Modify SDP to prioritize H264
-            await pc[data.sender].setRemoteDescription(new RTCSessionDescription(data.description));
+          // Prioritize H.264 in answer SDP
+          data.description.sdp = prioritizeH264(data.description.sdp);
+
+          await pc[data.sender].setRemoteDescription(
+            new RTCSessionDescription(data.description)
+          );
         }
-    });
+      });
 
       socket.on("chat", (data) => {
         h.addChat(data, "remote");
