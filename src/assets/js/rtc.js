@@ -5,7 +5,10 @@ window.addEventListener("load", () => {
   const room = h.getQString(location.href, "room");
   const user = sessionStorage.getItem("username");
   const username = JSON.parse(sessionStorage.getItem(user)).name;
-
+  function modifySdpForH264(sdp) {
+    sdp.sdp = sdp.sdp.replace("profile-level-id=42e01f", "profile-level-id=42e01f;level-asymmetry-allowed=1");
+    return sdp.sdp.replace("96", "126"); // Prefer H264 codec
+  }
   if (!room) {
     document.querySelector("#room-create").attributes.removeNamedItem("hidden");
   } else if (!username) {
@@ -71,44 +74,38 @@ window.addEventListener("load", () => {
 
       socket.on("sdp", async (data) => {
         if (data.description.type === "offer") {
-          data.description
-            ? await pc[data.sender].setRemoteDescription(
-                new RTCSessionDescription(data.description)
-              )
-            : "";
-
-          h.getUserFullMedia()
-            .then(async (stream) => {
-              if (!document.getElementById("local").srcObject) {
-                h.setLocalStream(stream);
-              }
-
-              //save my stream
-              myStream = stream;
-
-              stream.getTracks().forEach((track) => {
-                pc[data.sender].addTrack(track, stream);
-              });
-
-              let answer = await pc[data.sender].createAnswer();
-
-              await pc[data.sender].setLocalDescription(answer);
-
-              socket.emit("sdp", {
-                description: pc[data.sender].localDescription,
-                to: data.sender,
-                sender: socketId,
-              });
-            })
-            .catch((e) => {
-              console.error(e);
-            });
+            data.description.sdp = modifySdpForH264(data.description); // Modify SDP to prioritize H264
+            await pc[data.sender].setRemoteDescription(new RTCSessionDescription(data.description));
+    
+            h.getUserFullMedia()
+                .then(async (stream) => {
+                    if (!document.getElementById("local").srcObject) {
+                        h.setLocalStream(stream);
+                    }
+    
+                    // Save the user's stream
+                    myStream = stream;
+                    stream.getTracks().forEach((track) => {
+                        pc[data.sender].addTrack(track, stream);
+                    });
+    
+                    let answer = await pc[data.sender].createAnswer();
+                    answer.sdp = modifySdpForH264(answer); // Modify SDP answer to prefer H264
+    
+                    await pc[data.sender].setLocalDescription(answer);
+    
+                    socket.emit("sdp", {
+                        description: pc[data.sender].localDescription,
+                        to: data.sender,
+                        sender: socketId,
+                    });
+                })
+                .catch((e) => console.error(e));
         } else if (data.description.type === "answer") {
-          await pc[data.sender].setRemoteDescription(
-            new RTCSessionDescription(data.description)
-          );
+            data.description.sdp = modifySdpForH264(data.description); // Modify SDP to prioritize H264
+            await pc[data.sender].setRemoteDescription(new RTCSessionDescription(data.description));
         }
-      });
+    });
 
       socket.on("chat", (data) => {
         h.addChat(data, "remote");
