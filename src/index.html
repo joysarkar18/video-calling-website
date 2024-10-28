@@ -128,7 +128,7 @@
                 <i class="fa fa-desktop text-white"></i>
             </button>
 
-            <button class="btn btn-sm rounded-0 btn-no-effect" id="record-screen" title="Record">
+            <button class="btn btn-sm rounded-0 btn-no-effect" id="record-video" title="Record">
                 <i class="fa fa-dot-circle text-white"></i>
             </button>
 
@@ -164,5 +164,62 @@
     <div id="emoji-display"></div>
     
 </body>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", () => {
+  const recordButton = document.getElementById("record-video");
+  let mediaRecorder;
+  let recordedChunks = [];
+  let isRecording = false;
+
+  // Start or stop screen recording
+  recordButton.addEventListener("click", async () => {
+    if (!isRecording) {
+      // Start recording
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        
+        mediaRecorder = new MediaRecorder(screenStream, { mimeType: "video/webm" });
+        
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) recordedChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: "video/webm" });
+          const url = URL.createObjectURL(blob);
+          
+          // Download the recorded video file
+          const downloadLink = document.createElement("a");
+          downloadLink.href = url;
+          downloadLink.download = "screen-recording.webm";
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          document.body.removeChild(downloadLink);
+          
+          // Reset for next recording
+          recordedChunks = [];
+          URL.revokeObjectURL(url);
+        };
+        
+        mediaRecorder.start();
+        isRecording = true;
+        recordButton.title = "Stop Recording";
+        recordButton.querySelector("i").classList.replace("fa-dot-circle", "fa-stop-circle");
+      } catch (error) {
+        console.error("Error accessing screen recording:", error);
+      }
+    } else {
+      // Stop recording
+      mediaRecorder.stop();
+      isRecording = false;
+      recordButton.title = "Record";
+      recordButton.querySelector("i").classList.replace("fa-stop-circle", "fa-dot-circle");
+    }
+  });
+});
+
+</script>
 
 </html>
