@@ -305,6 +305,8 @@ export default {
       newVid.id = `demo-${i}-video`;
       newVid.srcObject = str;
       newVid.autoplay = true;
+      newVid.muted = true;  // For Safari
+      newVid.playsInline = true;  // For iOS Safari
       newVid.className = "remote-video";
 
       //video controls elements
