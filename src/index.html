@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-User Video Call</title>
+    <title>DP Community Call</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
         integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css"
@@ -90,24 +90,24 @@
                 <div class="row mt-2 mb-2" id="videos"></div>
             </div>
 
-            <div class="col-md-3 chat-col d-print-none mb-2 bg-info" id="chat-pane" hidden>
+            <div class="col-md-3 chat-col d-print-none mb-2 bg-dark text-dark" id="chat-pane" hidden>
                 <div class="row">
                     <div class="col-12 text-center h2 mb-3">CHAT</div>
                 </div>
-
+            
                 <div id="chat-messages"></div>
-
+            
                 <form>
                     <div class="input-group mb-3">
-                        <textarea id="chat-input" class="form-control rounded-0 chat-box border-info" rows="3"
+                        <textarea id="chat-input" class="form-control chat-box border-info rounded" rows="3"
                             placeholder="Type here..."></textarea>
                         <div class="input-group-append" id="chat-input-btn">
-                            <button type="button" class="btn btn-dark rounded-0 border-info btn-no-effect"
-                                id="send-message">Send</button>
+                            <button type="button" class="btn btn-dark rounded border-info btn-no-effect" id="send-message">Send</button>
                         </div>
                     </div>
                 </form>
             </div>
+            
         </div>
     </div>
 

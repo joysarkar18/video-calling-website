@@ -134,24 +134,22 @@ export default {
     let msgBg = "bg-white";
 
     if (senderType === "remote") {
-      contentAlign = "justify-content-start";
-      senderName = data.sender;
-      msgBg = "";
+        contentAlign = "justify-content-start";
+        senderName = data.sender.replace(/\s*\([^)]*\)/g, ""); // Remove text within parentheses
+        msgBg = "";
 
-      this.toggleChatNotificationBadge();
+        this.toggleChatNotificationBadge();
     }
 
     let infoDiv = document.createElement("div");
     infoDiv.className = "sender-info";
-    infoDiv.innerText = `${senderName} - ${moment().format(
-      "Do MMMM, YYYY h:mm a"
-    )}`;
+    infoDiv.innerText = `${senderName} - ${moment().format("h:mm a")}`; // Display only time
 
     let colDiv = document.createElement("div");
     colDiv.className = `col-10 card chat-card msg ${msgBg}`;
     colDiv.innerHTML = xssFilters
-      .inHTMLData(data.msg)
-      .autoLink({ target: "_blank", rel: "nofollow" });
+        .inHTMLData(data.msg)
+        .autoLink({ target: "_blank", rel: "nofollow" });
 
     let rowDiv = document.createElement("div");
     rowDiv.className = `row ${contentAlign} mb-2`;
@@ -162,9 +160,10 @@ export default {
     chatMsgDiv.appendChild(rowDiv);
 
     if (this.pageHasFocus) {
-      rowDiv.scrollIntoView();
+        rowDiv.scrollIntoView();
     }
-  },
+}
+,
 
    showEmojiReaction(emoji) {
     const emojiDisplay = document.getElementById('emoji-display');
